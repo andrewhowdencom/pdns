@@ -31,6 +31,50 @@ It is then possible to query the daemon with the `dig` utility as follows:
 dig +tcp andrewhowden.com @127.0.0.1 +short
 ----
 
+== Development
+
+=== Task Runner
+
+This project makes heavy use of the drone.io docker based pipeline tooling. More can be found at the URL:
+
+- https://drone.io/
+
+To install drone on a local machine see:
+
+- https://docs.drone.io/cli/install/
+
+The following are the tasks that are supported locally:
+
+|===
+| Task                                                          | Result
+
+| `drone exec --pipeline=lint`                                  | Static analysis tools in the project
+| `drone exec --pipeline=test`                                  | Go unit tests
+| `drone exec --env-file .env --pipeline=container --trusted`   | Build the container image
+|===
+
+==== nsenter: failed to unshare namespaces: Operation not permitted
+
+To execute the `img` container builder binary locally unprivileged user namespace cloning needs to be enabled. To do 
+so, execute:
+
+[source,bash]
+----
+echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+----
+
+In principle this is a harmless change, however there have been issues associated with unprivileged user namespace sharing
+in the past⁴
+
+== Git Hooks
+
+To use the git hooks that this project expects, run the following command within the project:
+
+[source,bash]
+----
+$ git config core.hooksPath $(git rev-parse --show-toplevel)/bin
+----
+
 == Minimum Viable Product (MVP)
 
 === Application [×]
@@ -58,7 +102,7 @@ Documentation attached to this project should include:
 - Security concerns of this application in infrastructure
 - How this application should be deployed in a distributed, microservice architecture
   & containerized architecture (potentially with several options)
-- Further improvements that would be interesting fo rthis project
+- Further improvements that would be interesting for this project
 
 == Roadmap
 
@@ -76,8 +120,8 @@ Additional
 == Design
 
 CAUTION: The following design is only the broad strokes of the project. More specific design choices associated
-         with given packages, tooling or other minituae are part of the commit log. These are visible by running
-	 `git log path/to/file`
+         with given packages, tooling or other minutiae are part of the commit log. These are visible by running
+	    `git log path/to/file`
 
 === Project Layout
 
@@ -135,6 +179,23 @@ Practically the filesystem layout looks like:
 ... (and so on)
 ----
 
+=== CI/CD: Drone
+
+Projects tend to benefit an extraordinarily large amount by shifting conversations associated with code style, test
+coverage, linting and other project quality controls to a service that renders a binary "yes/no" decision. Further,
+the development team will buy into the findings of this service much more if they are responsible for building and
+understanding that service.
+
+Further, that same service can be used to propagate changes into production based on particular version control events,
+time based events or other tooling.
+
+The "drone.io" CI/CD service is a minimal, docker based implementation of CI that allows writing very flexible and
+reasonably complex pipelines but does not reinvent primitives beyond what it needs to (for example, authentication).
+
+It has the tremendous advantage for this project that it can be executed locally, without any upstream server. This
+allows it to be integrated in with git hooks, as well as some demonstration of how a conceptual CI pipeline would
+look like.
+
 == Review
 
 The reviewers of this project are encouraged to review the git histories for a more detailed discussion as to how
@@ -151,3 +212,4 @@ git log --reverse --patch
 1. CloudFlare, "DNS over TLS", https://developers.cloudflare.com/1.1.1.1/dns-over-tls/, Accessed Sep-2019.
 2. P. Mockapetris, "Domain Names - Implementation and Specification", https://tools.ietf.org/html/rfc1035#section-4.2.2, Accessed Sep-2019
 3. Wikpedia, "DNS over TLS", https://en.wikipedia.org/wiki/DNS_over_TLS, Accessed Sep-2019
+4. Forest, "What does enabling unpriviged userns clone do", https://security.stackexchange.com/a/209533, Accessed Sep-2019

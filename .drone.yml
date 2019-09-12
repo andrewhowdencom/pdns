@@ -1,0 +1,45 @@
+---
+kind: "pipeline"
+name: "lint"
+steps:
+  - name: "lint"
+    image: "golangci/golangci-lint"
+    commands:
+      - cd src && golangci-lint run
+    environment:
+      GO111MODULE: "on"
+trigger:
+  # Execute this process every time a new pull request is opened
+  event:
+    - pull_request
+---
+kind: "pipeline"
+name: "test"
+steps:
+  - name: "test"
+    image: "golang:1.13.0-buster"
+    commands:
+      - cd src && go test
+trigger:
+  event:
+    - pull_request
+---
+kind: "pipeline"
+name: "container"
+steps:
+  - name: "container"
+    image: "jess/img:v0.5.7"
+    privileged: true
+    commands:
+      - | 
+        img build \
+          --tag gcr.io/andrewhowdencom/pdns:${DRONE_COMMIT} \
+          --tag gcr.io/andrewhowdencom/pdns:latest \
+          --file build/containers/pdns/Dockerfile \
+          .
+
+trigger:
+  branch:
+    - master
+  event:
+    - push
