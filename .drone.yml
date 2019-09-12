@@ -1,13 +1,53 @@
 ---
 kind: "pipeline"
+name: "dependencies"
+steps:
+  - name: restore-cache
+    image: drillster/drone-volume-cache
+    volumes:
+    - name: cache--gopkg
+      path: ./go
+    settings:
+      restore: true
+      mount:
+        - "./go"
+  - name: "vendor"
+    image: "golang:1.13.0-buster"
+    commands:
+      - cd src && go build
+    environment:
+      GOPATH: "/drone/src/go"
+  - name: rebuild-cache
+    image: drillster/drone-volume-cache
+    volumes:
+    - name: cache--gopkg
+      path: "./go"
+    settings:
+      rebuild: true
+      mount:
+        - "./go"
+---
+kind: "pipeline"
 name: "lint"
 steps:
+  - name: restore-cache
+    image: drillster/drone-volume-cache
+    volumes:
+    - name: cache--gopkg
+      path: ./go
+    settings:
+      restore: true
+      mount:
+        - "./go"
   - name: "lint"
     image: "golangci/golangci-lint"
     commands:
       - cd src && golangci-lint run --deadline 5m0s
     environment:
       GO111MODULE: "on"
+      GOPATH: "/drone/src/go"
+depends_on:
+  - "dependencies"
 trigger:
   # Execute this process every time a new pull request is opened
   event:
@@ -16,10 +56,23 @@ trigger:
 kind: "pipeline"
 name: "test"
 steps:
+  - name: restore-cache
+    image: drillster/drone-volume-cache
+    volumes:
+    - name: cache--gopkg
+      path: ./go
+    settings:
+      restore: true
+      mount:
+        - "./go"
   - name: "test"
     image: "golang:1.13.0-buster"
     commands:
       - cd src && go test
+    environment:
+      GOPATH: "/drone/src/go"
+depends_on:
+  - "dependencies"
 trigger:
   event:
     - pull_request
@@ -27,6 +80,15 @@ trigger:
 kind: "pipeline"
 name: "container"
 steps:
+  - name: restore-cache
+    image: drillster/drone-volume-cache
+    volumes:
+    - name: cache--gopkg
+      path: ./go
+    settings:
+      restore: true
+      mount:
+        - "./go"
   - name: "container"
     image: "jess/img:v0.5.7"
     privileged: true
@@ -37,9 +99,17 @@ steps:
           --tag gcr.io/andrewhowdencom/pdns:latest \
           --file build/containers/pdns/Dockerfile \
           .
-
+    environment:
+      GOPATH: "/drone/src/go"
+depends_on:
+  - "dependencies"
 trigger:
   branch:
     - master
   event:
     - push
+
+volumes:
+  - name: cache--gopkg
+    host:
+      path: /tmp/cache/gopkg
