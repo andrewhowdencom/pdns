@@ -1,11 +1,7 @@
 package main
 
-import (
-	"os"
-
-	"github.com/dedelala/sysexits"
-)
+import "go.pkg.andrewhowden.com/pdns/cmd"
 
 func main() {
-	os.Exit(sysexits.Unavailable)
+	cmd.Execute()
 }
