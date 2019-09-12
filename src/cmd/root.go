@@ -7,6 +7,8 @@ import (
 	"github.com/dedelala/sysexits"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"go.pkg.andrewhowden.com/pdns/internal/server"
 )
 
 var cfgFile string
@@ -22,8 +24,12 @@ responses.
 
 See github.com/andrewhowdencom/pdns`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("This functionality has not yet been implemented")
-		os.Exit(sysexits.Unavailable)
+		err := server.Serve()
+
+		if err != nil {
+			fmt.Printf("unable to start server: %s", err.Error())
+			os.Exit(sysexits.Software)
+		}
 	},
 }
 
