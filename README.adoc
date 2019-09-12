@@ -1,0 +1,85 @@
+= pDNS
+
+TIP: This is an implementation of the N26 SRE challenge.
+
+== Justification
+
+This project is a DNS proxy. It functions as an intermediary layer converting applications that speak DNS over TCP
+on the listening interface and forwards to a DNS over HTTPS upstream resolver.
+
+== Usage
+
+=== Starting the daemon
+
+The daemon can be started as follows:
+
+[source,bash]
+----
+$ pdns
+----
+
+It is then possible to query the daemon with the `dig` utility as follows:
+
+[source,bash]
+----
+dig +tcp andrewhowden.com @127.0.0.1 +short
+----
+
+== Minimum Viable Product (MVP)
+
+=== Application [×]
+
+To have this project considered "initially complete" the project is expected to be able to fulfil a local DNS request 
+over TCP and proxy that request to a given DNS over TLS upstream.
+
+[ditaa]
+....
++-----------------+                   +------------------+              +---------------------+
+|                 |                   |                  |              |                     |
+|  Client App     +-----DNS / TCP-----+        pDNS      +--DNS / TLS---+    CloudFlare       |
+|                 |                   |                  |              |                     |
++-----------------+                   +------------------+              +---------------------+
+....
+
+=== Dockerfile [×]
+
+The application should be packed into a Dockerfile
+
+=== Documentation [x]
+
+Documentation attached to this project should include:
+
+- Security concerns of this application in infrastructure
+- How this application should be deployed in a distributed, microservice architecture
+  & containerized architecture (potentially with several options)
+- Further improvements that would be interesting fo rthis project
+
+== Roadmap
+
+Recommended
+
+- [×] The abilility to handle multiple, parallel requests
+- [×] A UDP listener
+
+Additional
+
+- [×] Configurable application parameters (upstream nameserver, listen port, listen host)
+- [×] A caching layer for the DNS responses
+- [×] Multiple upstream protocols (DNS over TLS, DNS over HTTPS, DNS over UDP)
+
+== Review
+
+The reviewers of this project are encouraged to review the git histories for a more detailed discussion as to how
+a given design decision was made. The project has been recorded such that it should be possible to see the
+evolution of a project by running:
+
+[source,bash]
+----
+git log --reverse --patch
+----
+
+== References
+
+1. CloudFlare, "DNS over TLS", https://developers.cloudflare.com/1.1.1.1/dns-over-tls/, Accessed Sep-2019.
+2. P. Mockapetris, "Domain Names - Implementation and Specification", https://tools.ietf.org/html/rfc1035#section-4.2.2, Accessed Sep-2019
+3. Wikpedia, "DNS over TLS", https://en.wikipedia.org/wiki/DNS_over_TLS, Accessed Sep-2019
