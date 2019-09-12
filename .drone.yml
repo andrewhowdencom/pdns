@@ -5,7 +5,7 @@ steps:
   - name: "lint"
     image: "golangci/golangci-lint"
     commands:
-      - cd src && golangci-lint run
+      - cd src && golangci-lint run --deadline 5m0s
     environment:
       GO111MODULE: "on"
 trigger:
