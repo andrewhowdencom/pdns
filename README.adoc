@@ -1,4 +1,5 @@
 = pDNS
+:icons: font
 
 - [P]roxy 
 - [D]omain 
@@ -78,6 +79,13 @@ CAUTION: The following design is only the broad strokes of the project. More spe
          with given packages, tooling or other minituae are part of the commit log. These are visible by running
 	 `git log path/to/file`
 
+=== Project Layout
+
+This project follows the pattern of an "all aspects of a service in one place" type design. This has worked well in
+the past with cross functional teams and a high level of service ownership. See the following link for details:
+
+- https://l.littleman.co/2V6F6ns
+
 === Language Choice: Go
 
 The project requirements were open to any given language but the langauge chosen for this project was Go. This is not
@@ -86,8 +94,46 @@ task such as this:
 
 - Simple deployment model being a statically compiled binary
 - Excellent networking libraries
-- A concurrency model that should allow parallelising requests easily
+- A concurrency model that should allow parallelizing requests easily
 - A (relatively) small memory and compute overhead for the daemon
+
+=== Dockerfile: Multistage, scratch
+
+The dockerfile is a "two stage". 
+
+==== Stage 0
+
+Stage 0 is a Debian Buster image that:
+
+- Contains a set of certificate authorities that are trusted by the Debian maintainers
+- Contains the go runtime
+
+The binary is compiled within this image statically
+
+==== Stage 1
+
+Stage 1 is "scratch" or empty image into which the certificates and the binary are copied.
+
+Such an image has some interesting benefits:
+
+- It is small and can be shipped across the network quickly
+- There is almost no attack surface in shared libraries that might be consumed by the go binary or in processes that
+  could be executed in the case there was a remote code execution.
+
+Practically the filesystem layout looks like:
+
+[source,bash]
+----
+.
+├── pdns
+├── etc
+│   └── ssl
+│       └── certs
+│           ├── 02265526.0 -> Entrust_Root_Certification_Authority_-_G2.pem
+│           ├── 03179a64.0 -> Staat_der_Nederlanden_EV_Root_CA.pem
+│           ├── 062cdee6.0 -> GlobalSign_Root_CA_-_R3.pem
+... (and so on)
+----
 
 == Review
 
