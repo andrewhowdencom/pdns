@@ -89,6 +89,14 @@ steps:
       restore: true
       mount:
         - "./go"
+  - name: "metadata"
+    image: "golang:1.13.0-buster"
+    commands:
+      - |
+        [ ! -z "$(git tag -l --points-at HEAD)" ] && \
+        sed --in-place "s/HEAD/$(git tag -l --points-at HEAD)/"                  src/internal/metadata/version.go
+      - sed --in-place "s/000000/$(git rev-parse --short HEAD)/"                 src/internal/metadata/version.go
+      - sed --in-place "s/1970-01-01 00:00:00+00:00/$(date --rfc-3339=seconds)/" src/internal/metadata/version.go
   - name: "container"
     image: "jess/img:v0.5.7"
     privileged: true
