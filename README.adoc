@@ -1,5 +1,10 @@
 = pDNS
 
+- [P]roxy 
+- [D]omain 
+- [N]ame 
+- [S]erver
+
 TIP: This is an implementation of the N26 SRE challenge.
 
 == Justification
