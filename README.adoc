@@ -67,6 +67,23 @@ Additional
 - [×] A caching layer for the DNS responses
 - [×] Multiple upstream protocols (DNS over TLS, DNS over HTTPS, DNS over UDP)
 
+== Design
+
+CAUTION: The following design is only the broad strokes of the project. More specific design choices associated
+         with given packages, tooling or other minituae are part of the commit log. These are visible by running
+	 `git log path/to/file`
+
+=== Language Choice: Go
+
+The project requirements were open to any given language but the langauge chosen for this project was Go. This is not
+the authors most familiar language, however Go has a number of characteristics that make it uniquely suitable for a
+task such as this:
+
+- Simple deployment model being a statically compiled binary
+- Excellent networking libraries
+- A concurrency model that should allow parallelising requests easily
+- A (relatively) small memory and compute overhead for the daemon
+
 == Review
 
 The reviewers of this project are encouraged to review the git histories for a more detailed discussion as to how
