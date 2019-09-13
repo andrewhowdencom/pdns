@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/dedelala/sysexits"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -27,7 +29,9 @@ See github.com/andrewhowdencom/pdns`,
 		err := server.Serve()
 
 		if err != nil {
-			fmt.Printf("unable to start server: %s", err.Error())
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Error("unable to start server")
 			os.Exit(sysexits.Software)
 		}
 	},
@@ -36,9 +40,16 @@ See github.com/andrewhowdencom/pdns`,
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/pdns.yaml)")
+	rootCmd.PersistentFlags().StringP("log-level", "v", "warn", "log level for the application (default is warn)")
+
+	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
 }
 
 func initConfig() {
+	// Read in environment specific configuration\
+	viper.SetEnvPrefix("PDNS")
+	viper.AutomaticEnv()
+
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
@@ -51,12 +62,28 @@ func initConfig() {
 		fmt.Println("Can't read config:", err)
 		os.Exit(sysexits.DataErr)
 	}
+
+	// Set up logging
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetOutput(os.Stdout)
+
+	level, err := log.ParseLevel(viper.GetString("log-level"))
+	if err != nil {
+		log.SetLevel(log.WarnLevel)
+		log.WithFields(log.Fields{
+			"log-level": viper.GetString("log-level"),
+		}).Warn("Unable to parse log level. Defaulting to warn")
+	} else {
+		log.SetLevel(level)
+	}
 }
 
 // Execute instantiates and executes hte application
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("unable to bootstrap the application")
 		os.Exit(sysexits.Software)
 	}
 }

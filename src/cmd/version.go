@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	log "github.com/sirupsen/logrus"
+
+	"github.com/dedelala/sysexits"
 	"github.com/spf13/cobra"
 	"go.pkg.andrewhowden.com/pdns/internal/metadata"
-	"github.com/dedelala/sysexits"
 )
 
 var versionCmd = &cobra.Command{
@@ -20,7 +22,10 @@ commit, or of a semantic version expressed through git`,
 		isDetail, err := cmd.Flags().GetBool("detail")
 
 		if err != nil {
-			fmt.Println("Unable to determine whether to return detailed version")
+			log.WithFields(log.Fields{
+				"isDetail": isDetail,
+				"error":    err.Error(),
+			}).Error("Unable to determine whether to return detailed version")
 			os.Exit(sysexits.Software)
 		}
 

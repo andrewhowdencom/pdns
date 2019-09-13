@@ -1,11 +1,15 @@
 package server
 
 import (
-	"net"
-	"fmt"
-	"time"
 	"bufio"
 	"encoding/binary"
+	"fmt"
+	"net"
+	"time"
+
+	log "github.com/sirupsen/logrus"
+
+	"go.pkg.andrewhowden.com/pdns/internal/dns/question"
 )
 
 const defaultListenPort int = 53
@@ -46,7 +50,7 @@ func Serve() error {
 // See https://tools.ietf.org/html/rfc1035#section-4.2.2
 //
 // @todo: Figure out better error handling. DNS should have a defined error return format
-func handle(connection net.Conn) {	
+func handle(connection net.Conn) {
 	prefix := make([]byte, 2)
 	reader := bufio.NewReader(connection)
 
@@ -56,14 +60,20 @@ func handle(connection net.Conn) {
 	err := connection.SetReadDeadline(time.Now().Add(timeout))
 
 	if err != nil {
-		fmt.Printf("unable to set a read timeout on the connection: %s", err.Error())
-		return	
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("unable to set a read timeout on the connection")
+
+		return
 	}
 
 	// Read the prefix for message length
 	_, err = reader.Read(prefix)
 	if err != nil {
-		fmt.Printf("unable to read the length prefix: %s", err.Error())
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("unable to read the length prefix")
+
 		return
 	}
 
@@ -75,7 +85,10 @@ func handle(connection net.Conn) {
 	_, err = reader.Read(payload)
 
 	if err != nil {
-		fmt.Printf("unable to read data from connection: %s", err.Error())
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("unable to read data from connection")
+
 		return
 	}
 
