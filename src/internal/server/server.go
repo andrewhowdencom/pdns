@@ -9,30 +9,30 @@ import (
 	"net"
 	"time"
 
+	"go.pkg.andrewhowden.com/pdns/internal/server/config"
+
 	log "github.com/sirupsen/logrus"
 )
 
 // Server is an entity reference representing the server
 type Server struct {
-	Configuration *Configuration
+	Config *config.Server
 }
 
 // New returns a new server. In the case that configuration variabels are not defined, set sane defaults.
-func New(inputCfg *Configuration) *Server {
-
-	cfg := NewConfiguration()
-	cfg.Merge(inputCfg)
-
+func New(cfg *config.Server) *Server {
 	return &Server{
-		Configuration: cfg,
+		Config: cfg,
 	}
 }
 
 // Serve starts up the server listening for DNS connections
 func (server Server) Serve() error {
+	log.WithFields(log.Fields{"config": server.Config}).Debug("starting server")
+
 	listener, err := net.Listen(
 		"tcp",
-		fmt.Sprintf("%s:%d", server.Configuration.Listen.IP, server.Configuration.Listen.Port),
+		fmt.Sprintf("%s:%d", server.Config.Listen.IP, server.Config.Listen.Port),
 	)
 
 	if err != nil {
@@ -74,7 +74,7 @@ func (server Server) proxy(inConn net.Conn) {
 	conf := &tls.Config{}
 	outConn, err := tls.Dial(
 		"tcp",
-		fmt.Sprintf("%s:%d", server.Configuration.Upstream.IP, server.Configuration.Upstream.Port),
+		fmt.Sprintf("%s:%d", server.Config.Upstream.IP, server.Config.Upstream.Port),
 		conf,
 	)
 
@@ -94,7 +94,6 @@ func (server Server) proxy(inConn net.Conn) {
 		}).Error("unable to unpack incoming message")
 	}
 
-	// Testing
 	length := make([]byte, 2)
 	binary.BigEndian.PutUint16(length, uint16(len(query)))
 
