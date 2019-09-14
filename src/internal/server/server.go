@@ -17,37 +17,14 @@ type Server struct {
 	Configuration *Configuration
 }
 
-// Configuration is an entity that modifies the server behaviour
-type Configuration struct {
-	// Upstream is the resolver that this proxy will connect to
-	Upstream *Host
-
-	// Listen is the address on which this server will listen
-	Listen *Host
-}
-
-// Host configuration for binding or addressing servers
-type Host struct {
-	// An IP that represents a host to listen to or to address
-	IP string
-
-	// Port to listen for tp to address to
-	Port uint16
-}
-
 // New returns a new server. In the case that configuration variabels are not defined, set sane defaults.
-func New(configuration *Configuration) *Server {
+func New(inputCfg *Configuration) *Server {
+
+	cfg := NewConfiguration()
+	cfg.Merge(inputCfg)
+
 	return &Server{
-		Configuration: &Configuration{
-			Upstream: &Host{
-				IP:   "8.8.8.8",
-				Port: 853,
-			},
-			Listen: &Host{
-				IP:   "127.0.0.1",
-				Port: 53,
-			},
-		},
+		Configuration: cfg,
 	}
 }
 

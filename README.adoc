@@ -115,7 +115,7 @@ Recommended
 
 Additional
 
-- [×] Configurable application parameters (upstream nameserver, listen port, listen host)
+- [✔] Configurable application parameters (upstream nameserver, listen port, listen host)
 - [x] Man pages for binary, configuration
 - [×] Monitoring for the requests going through the proxy
 - [×] A caching layer for the DNS responses

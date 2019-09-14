@@ -23,6 +23,7 @@ import (
 	"github.com/dedelala/sysexits"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // serveCmd represents the serve command
@@ -34,7 +35,11 @@ var serveCmd = &cobra.Command{
 The proxy should be made available via the defined DNS port 
 (default 53) and protocols (default tcp).`,
 	Run: func(cmd *cobra.Command, args []string) {
-		srv := server.New(&server.Configuration{})
+		srv := server.New(&server.Configuration{
+			Upstream: &server.Host{
+				IP: viper.GetString("server.upstream.ip"),
+			},
+		})
 		err := srv.Serve()
 
 		if err != nil {
@@ -48,4 +53,8 @@ The proxy should be made available via the defined DNS port
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
+
+	// Upstream
+	serveCmd.PersistentFlags().StringP("upstream-ip", "", "8.8.8.8", "The upstream resolver to send requests to (default: 8.8.8.8)")
+	viper.BindPFlag("server.upstream.ip", serveCmd.PersistentFlags().Lookup("upstream-ip"))
 }
