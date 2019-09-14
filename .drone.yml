@@ -103,25 +103,25 @@ steps:
     commands:
       # Get access to GitHub
       - |
-        echo "$GITHUB_ACCESS_TOKEN"  \
-          | img login --username="$GITHUB_ACCESS_USERNAME" --password-stdin https://docker.pkg.github.com
+        echo "$QUAY_ROBOT_PASSWORD"  \
+          | img login --username="$QUAY_ROBOT_USERNAME" --password-stdin quay.io
 
       # Compile the application
       - | 
         img build \
-          --tag docker.pkg.github.com/andrewhowdencom/pdns/app:${DRONE_COMMIT} \
-          --tag docker.pkg.github.com/andrewhowdencom/pdns/app:latest \
+          --tag quay.io/andrewhowdencom/pdns:${DRONE_COMMIT} \
+          --tag quay.io/andrewhowdencom/pdns:latest \
           --file build/containers/pdns/Dockerfile \
           .
       # Deploy the artefact
-      - img push "docker.pkg.github.com/andrewhowdencom/pdns/app:latest"
-      - img push "docker.pkg.github.com/andrewhowdencom/pdns/app:${DRONE_COMMIT}"
+      - img push "quay.io/andrewhowdencom/pdns:latest"
+      - img push "quay.io/andrewhowdencom/pdns:${DRONE_COMMIT}"
     environment:
       GOPATH: "/drone/src/go"
-      GITHUB_ACCESS_USERNAME:
-        from_secret: "GITHUB_ACCESS_USERNAME"
-      GITHUB_ACCESS_TOKEN:
-        from_secret: "GITHUB_ACCESS_TOKEN"
+      QUAY_ROBOT_USERNAME:
+        from_secret: "QUAY_ROBOT_USERNAME"
+      QUAY_ROBOT_PASSWORD:
+        from_secret: "QUAY_ROBOT_PASSWORD"
 
 depends_on:
   - "dependencies"
