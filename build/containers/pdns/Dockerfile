@@ -31,4 +31,4 @@ FROM scratch
 COPY --from=0 /mnt/bin/pdns  /pdns
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 
-ENTRYPOINT [ "/pdns", "serve" ]
+ENTRYPOINT [ "/pdns", "serve", "--listen-ip=0.0.0.0" ]

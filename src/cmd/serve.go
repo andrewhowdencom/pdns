@@ -33,6 +33,9 @@ func init() {
 	// Listener
 	serveCmd.PersistentFlags().StringP("listen-protocol", "", "tcp", "The protocol on which to listen to requests (default: tcp)")
 	viper.BindPFlag("server.listen.protocol", serveCmd.PersistentFlags().Lookup("listen-protocol"))
+
+	serveCmd.PersistentFlags().StringP("listen-ip", "", "127.0.0.1", "The protocol on which to listen to requests (default: 127.0.0.1)")
+	viper.BindPFlag("server.listen.ip", serveCmd.PersistentFlags().Lookup("listen-ip"))
 }
 
 func start(cmd *cobra.Command, args []string) {
@@ -40,6 +43,14 @@ func start(cmd *cobra.Command, args []string) {
 
 	// Configure the server
 	if err := srvCfg.Upstream.SetIP(viper.GetString("server.upstream.ip")); err != nil {
+		log.WithFields(log.Fields{
+			"error":       err.Error(),
+			"upstream-ip": viper.GetString("server.upstream.ip"),
+		}).Error("unable to start server")
+		os.Exit(sysexits.Software)
+	}
+
+	if err := srvCfg.Listen.SetIP(viper.GetString("server.listen.ip")); err != nil {
 		log.WithFields(log.Fields{
 			"error":       err.Error(),
 			"upstream-ip": viper.GetString("server.upstream.ip"),
