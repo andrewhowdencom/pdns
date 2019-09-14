@@ -7,7 +7,7 @@ const (
 	ProtoUDP   = "udp"
 	ProtoTCP   = "tcp"
 	ProtoDoT   = "dot"
-	ProtoHTTPS = "https"
+	ProtoHTTPS = "doh"
 )
 
 // Configuration is an entity that modifies the server behaviour

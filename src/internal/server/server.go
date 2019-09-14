@@ -30,6 +30,75 @@ func New(cfg *config.Server) *Server {
 func (server Server) Serve() error {
 	log.WithFields(log.Fields{"config": server.Config}).Debug("starting server")
 
+	if server.Config.Listen.Protocol == config.ProtoTCP {
+		return server.serveTCP()
+	}
+
+	if server.Config.Listen.Protocol == config.ProtoUDP {
+		return server.serveUDP()
+	}
+
+	return errors.New("cannot start server: protocol unimplemented")
+}
+
+func (server Server) serveUDP() error {
+	conn, err := net.ListenPacket(
+		server.Config.Listen.Protocol,
+		fmt.Sprintf("%s:%d", server.Config.Listen.IP, server.Config.Listen.Port),
+	)
+
+	if err != nil {
+		return fmt.Errorf("unable to start server: %s", err.Error())
+	}
+
+	defer conn.Close()
+
+	for {
+		// UDP packets are limited by the RFC to 512 bytes
+		// See https://tools.ietf.org/html/rfc1035#section-4.2.1
+		buffer := make([]byte, 512)
+		length, addr, err := conn.ReadFrom(buffer)
+
+		// Skip failed connections
+		if err != nil {
+			log.WithFields(log.Fields{"error": err.Error()}).Warn("failed to read packet")
+			continue
+		}
+
+		go server.handleUDP(conn, addr, buffer[:length])
+
+	}
+
+	return nil
+}
+
+func (server Server) handleUDP(conn net.PacketConn, addr net.Addr, buffer []byte) {
+	response, err := server.proxy(buffer)
+
+	if err != nil {
+		log.WithFields(log.Fields{"error": err.Error()}).Error("unable to proxy request to server")
+		return
+	}
+
+	conn.WriteTo(response, addr)
+}
+
+func (server Server) handleTCP(conn net.Conn, query []byte) {
+	length := make([]byte, 2)
+	response, err := server.proxy(query)
+
+	if err != nil {
+		log.WithFields(log.Fields{"error": err.Error()}).Error("unable to proxy request to server")
+		return
+	}
+
+	// Calculate the length prefix for TCP connections
+	binary.BigEndian.PutUint16(length, uint16(len(response)))
+
+	conn.Write(append(length, response...))
+}
+
+func (server Server) serveTCP() error {
 	listener, err := net.Listen(
 		"tcp",
 		fmt.Sprintf("%s:%d", server.Config.Listen.IP, server.Config.Listen.Port),
@@ -50,72 +119,61 @@ func (server Server) Serve() error {
 			return fmt.Errorf("error accepting connection: %s", err.Error())
 		}
 
+		// The recommendation from the RFC 1035 is a 2m timeout duration. See:
+		// - https://tools.ietf.org/html/rfc1035#section-4.2.2
+		timeout, _ := time.ParseDuration("2m")
+		err = connection.SetReadDeadline(time.Now().Add(timeout))
+
+		if err != nil {
+			log.WithFields(log.Fields{"error": err.Error()}).Warn("unable to set connection deadline")
+			continue
+		}
+
+		// Query the upstream
+		query, err := read(connection, true)
+		if err != nil {
+			log.WithFields(log.Fields{"error": err.Error()}).Error("unable to unpack incoming message")
+			continue
+		}
+
 		// Handle the connection. Each connection is handled in its own goroutine and assumed to deal with the
 		// connection within that context. This allows multiple connections to be executed in parallel
-		go server.proxy(connection)
+		go server.handleTCP(connection, query)
 	}
 }
 
-func (server Server) proxy(inConn net.Conn) {
-	// Set up the connection
-	// The recommendation from the RFC 1035 is a 2m timeout duration. See:
-	// - https://tools.ietf.org/html/rfc1035#section-4.2.2
-	timeout, _ := time.ParseDuration("2m")
-	err := inConn.SetReadDeadline(time.Now().Add(timeout))
-
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("unable to set a read timeout on the connection")
-
-		return
-	}
-
+func (server Server) proxy(query []byte) ([]byte, error) {
 	conf := &tls.Config{}
-	outConn, err := tls.Dial(
+	resolver, err := tls.Dial(
 		"tcp",
 		fmt.Sprintf("%s:%d", server.Config.Upstream.IP, server.Config.Upstream.Port),
 		conf,
 	)
 
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("unable to connect to upstream resolver")
+		return make([]byte, 0), fmt.Errorf("cannot connect to upstream resolver: %s", err.Error())
 	}
 
-	defer outConn.Close()
+	defer resolver.Close()
 
-	// Query the upstream
-	query, err := read(inConn, true)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("unable to unpack incoming message")
-	}
-
+	// TCP DNS quries require a length prefix to be applied to the query. See:
+	// - https://tools.ietf.org/html/rfc1035#section-4.2.2
 	length := make([]byte, 2)
 	binary.BigEndian.PutUint16(length, uint16(len(query)))
 
-	_, err = outConn.Write(append(length, query...))
+	_, err = resolver.Write(append(length, query...))
 
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("failed to write to upstream tls socket")
+		fmt.Printf("failed to write payload to upstream: %s", err.Error())
 	}
 
-	// Calculate response length
-	response, err := read(outConn, true)
-	binary.BigEndian.PutUint16(length, uint16(len(response)))
+	response, err := read(resolver, true)
 
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("failed to read back from connection")
+		return make([]byte, 0), fmt.Errorf("unabel to parse response: %s", err.Error())
 	}
 
-	inConn.Write(append(length, response...))
+	return response, nil
 }
 
 // read extracts the query byte array from a connection object, such as an incoming connection
