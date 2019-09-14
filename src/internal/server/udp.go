@@ -34,8 +34,6 @@ func (server Server) serveUDP() error {
 		go server.handleUDP(conn, addr, buffer[:length])
 
 	}
-
-	return nil
 }
 
 func (server Server) handleUDP(conn net.PacketConn, addr net.Addr, buffer []byte) {
