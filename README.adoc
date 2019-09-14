@@ -11,7 +11,9 @@ TIP: This is an implementation of the N26 SRE challenge.
 == Justification
 
 This project is a DNS proxy. It functions as an intermediary layer converting applications that speak DNS over TCP
-on the listening interface and forwards to a DNS over HTTPS upstream resolver.
+on the listening interface and forwards to a DNS over TLS upstream resolver.
+
+It is basically DNS `stunnel`.
 
 == Usage
 
