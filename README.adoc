@@ -15,6 +15,29 @@ on the listening interface and forwards to a DNS over TLS upstream resolver.
 
 It is basically DNS `stunnel`.
 
+== Synopsis
+
+[source,bash]
+----
+$ ./pdns  serve --help
+This command starts the DNS proxy.
+	
+The proxy should be made available via the defined DNS port 
+(default 53) and protocols (default tcp).
+
+Usage:
+  pdns serve [flags]
+
+Flags:
+  -h, --help                     help for serve
+      --listen-protocol string   The protocol on which to listen to requests (default: tcp) (default "tcp")
+      --upstream-ip string       The upstream resolver to send requests to (default: 8.8.8.8) (default "8.8.8.8")
+
+Global Flags:
+      --config string      config file (default is /etc/pdns.yaml)
+  -v, --log-level string   log level for the application (default is warn) (default "warn")
+----
+
 == Usage
 
 === Starting the daemon
@@ -23,17 +46,112 @@ The daemon can be started as follows:
 
 [source,bash]
 ----
-$ pdns
+# sudo is required as the default port, 53, is below the reserved 8000 range
+$ sudo ./pdns  serve
 ----
 
 It is then possible to query the daemon with the `dig` utility as follows:
 
 [source,bash]
 ----
-dig +tcp andrewhowden.com @127.0.0.1 +short
+$ dig @localhost andrewhowden.com +tcp
+;; Connection to ::1#53(::1) for andrewhowden.com failed: connection refused.
+
+; <<>> DiG 9.11.5-P4-5.1-Debian <<>> @localhost andrewhowden.com +tcp
+; (2 servers found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 1645
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 512
+;; QUESTION SECTION:
+;andrewhowden.com.		IN	A
+
+;; ANSWER SECTION:
+andrewhowden.com.	299	IN	A	104.198.14.52
+
+;; Query time: 158 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+;; WHEN: Sat Sep 14 19:18:20 CEST 2019
+;; MSG SIZE  rcvd: 61
 ----
 
+== Deployment
+
+=== Sidecar
+
+The recommended deployment model for a proxy such as this is a "sidecar" to the application. Within Kubernetes, this
+means deploying the proxy in the same pod as the application. In other orchestration tooling this means deploying the
+proxy into the same network namespace as the application.
+
+=== Service
+
+An alternative design is to deploy the application to a specific location at which point it is discoverable.
+
+Whether this is appropriate depends on the thread model of the infrastructure however:
+
+- It cannot be guaranteed the local network is more trustworthy than the public
+- DNS is a service discovery mechanism and this should not be discoverable via other service discovery mechanisms that
+  are not cryptographically verifiable as they themselves might be poisoned.
+
+== Security
+
+There are various security considerations that are worth thinking about when deploying this application. Without
+diving too deeply into the specifics the issues can be broken down into:
+
+=== Privacy & Integrity of responses
+
+The value of DNS over TLS is that any intermediaries between the application and the upstream resolver cannot inject
+malformed or incorrect responses back to the client before the upstream resolver can send their response. Further, that
+the those intermediaries do not have visibility into the queries that the client is making and can thus do network
+discovery by proxy.
+
+The most dangerous scenario for a DNS man in the middle attack would be when a given service that does not connect over
+TLS will exchange credentials with a service that is addressed by DNS. For example, given a MySQL server running on
+a kubernetes cluster and connecting without TLS could be redirected to a nefarious MySQL server that will stub the
+connection out just to receive the password.
+
+This can be addressed by listening to the proxy over localhost, where it is assumed the connection is safe from being
+poisoned.
+
+=== Denial of service
+
+The current design of the application is such that it will simply proxy the requests to an upstream server. However, 
+some components of this are particularly expensive. For example, 
+
+- TCP session negotiation
+- TLS session negotiation
+
+Because there is no reuse, limits or other safeties on these primitives it is possible that abusive clients can make a
+large number of requests to the resolver and (for example) exhaust the local ephemeral port range via connections in
+TIME_WAIT or simply exhaust the number of parallel processes the proxy is able to make.
+
+This should be addressed by introducing these facets to the application over time.
+
+=== Binary corruption or logical flaw
+
+Though the application as implemented is simple, there is the possibility that there is some logical flaw in the
+application (for example, incorrect buffer size) that allows the crafting of malformed DNS requests. These might lead
+to upstream DNS failures.
+
+This is addressed by limiting privilege required to boot the application (perhaps via `setcap` to allow low binding
+ports) and limiting the amount of access any user who manages to get code execution from the application has.
+
 == Development
+
+=== Getting Started
+
+The project can be easily build and tested by running:
+
+[source,bash]
+----
+cd src
+go build
+----
+
+That will generate the binary `./pdns` as noted in "usage".
 
 === Task Runner
 
@@ -79,7 +197,7 @@ $ git config core.hooksPath $(git rev-parse --show-toplevel)/bin
 
 == Minimum Viable Product (MVP)
 
-=== Application [×]
+=== Application [✔]
 
 To have this project considered "initially complete" the project is expected to be able to fulfil a local DNS request 
 over TCP and proxy that request to a given DNS over TLS upstream.
@@ -93,29 +211,27 @@ over TCP and proxy that request to a given DNS over TLS upstream.
 +-----------------+                   +------------------+              +---------------------+
 ....
 
-=== Dockerfile [×]
+=== Dockerfile [✔]
 
 The application should be packed into a Dockerfile
 
-=== Documentation [x]
+=== Documentation [✔]
 
-Documentation attached to this project should include:
-
-- Security concerns of this application in infrastructure
-- How this application should be deployed in a distributed, microservice architecture
-  & containerized architecture (potentially with several options)
-- Further improvements that would be interesting for this project
+See this README
 
 == Roadmap
 
 Recommended
 
 - [✔] The abilility to handle multiple, parallel requests
-- [×] A UDP listener
+- [✔] A UDP listener
 
 Additional
 
 - [✔] Configurable application parameters (upstream nameserver, listen port, listen host)
+
+Unfinished
+
 - [x] Man pages for binary, configuration
 - [×] Monitoring for the requests going through the proxy
 - [×] A caching layer for the DNS responses
