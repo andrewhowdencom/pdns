@@ -51,8 +51,7 @@ func initConfig() {
 	}
 
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println("Can't read config:", err)
-		os.Exit(sysexits.DataErr)
+		fmt.Printf("Can't read config: %s. Falling back to defaults\n", err.Error())
 	}
 
 	// Set up logging
