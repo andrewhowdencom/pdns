@@ -103,25 +103,23 @@ steps:
     commands:
       # Get access to GitHub
       - |
-        echo "$QUAY_ROBOT_PASSWORD"  \
-          | img login --username="$QUAY_ROBOT_USERNAME" --password-stdin quay.io
+        echo "$GOOGLE_CLOUD_SERVICE_ACCOUNT"  \
+          | img login --username="_json_key" --password-stdin gcr.io
 
       # Compile the application
       - | 
-        img build \
-          --tag quay.io/andrewhowdencom/pdns:${DRONE_COMMIT} \
-          --tag quay.io/andrewhowdencom/pdns:latest \
-          --file build/containers/pdns/Dockerfile \
-          .
+          img build \
+            --tag gcr.io/andrewhowdencom/pdns:latest \
+            --tag gcr.io/andrewhowdencom/pdns:${DRONE_COMMIT} \
+            --file build/containers/pdns/Dockerfile \
+            .
       # Deploy the artefact
-      - img push "quay.io/andrewhowdencom/pdns:latest"
-      - img push "quay.io/andrewhowdencom/pdns:${DRONE_COMMIT}"
+      - img push "gcr.io/andrewhowdencom/pdns:latest"
+      - img push "gcr.io/andrewhowdencom/pdns:${DRONE_COMMIT}"
     environment:
       GOPATH: "/drone/src/go"
-      QUAY_ROBOT_USERNAME:
-        from_secret: "QUAY_ROBOT_USERNAME"
-      QUAY_ROBOT_PASSWORD:
-        from_secret: "QUAY_ROBOT_PASSWORD"
+      GOOGLE_CLOUD_SERVICE_ACCOUNT:
+        from_secret: "GOOGLE_CLOUD_SERVICE_ACCOUNT"
 
 depends_on:
   - "dependencies"
