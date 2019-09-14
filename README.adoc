@@ -108,20 +108,45 @@ Documentation attached to this project should include:
 
 Recommended
 
-- [×] The abilility to handle multiple, parallel requests
+- [✔] The abilility to handle multiple, parallel requests
 - [×] A UDP listener
 
 Additional
 
 - [×] Configurable application parameters (upstream nameserver, listen port, listen host)
+- [x] Man pages for binary, configuration
+- [×] Monitoring for the requests going through the proxy
 - [×] A caching layer for the DNS responses
-- [×] Multiple upstream protocols (DNS over TLS, DNS over HTTPS, DNS over UDP)
+- [×] Multiple upstream protocols (DNS over TLS, DNS over HTTPS, DNS over TCP/UDP)
 
 == Design
 
 CAUTION: The following design is only the broad strokes of the project. More specific design choices associated
          with given packages, tooling or other minutiae are part of the commit log. These are visible by running
 	    `git log path/to/file`
+
+=== Architecture
+
+The requirements of this project are to provde a "DNS over TCP to DNS over UDP proxy".
+
+Because the DNS over TLS implementation is broadly the same as the DNS over TCP implementation, this project elects
+just to create the TLS tunnel and forward the response directly to the DNS upstream, then copying the response back
+to the client.
+
+This has some advantages in that:
+
+- It is extremely simple, being essentially a dumb forwarder
+- The implementation of DNS is left to the upstream providers, and there are less opportunities for DNS bugs to slip in
+
+However, some disadvantages in that:
+
+- There is no ability to cache responses
+- There is no visibility into what responses are being forwarded
+
+Thus, while this technically fits requirements the project is probably not suitable for production workloads. For
+production, there is the excellent CoreDNS project:
+
+  - https://github.com/coredns/coredns/tree/master/plugin/forward
 
 === Project Layout
 
