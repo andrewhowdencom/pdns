@@ -4,7 +4,8 @@
 # To build this image run the following commands:
 #
 #   $ docker build \
-#         --tag gcr.io/andrewhowdencom/pdns:latest \
+#         --tag docker.pkg.github.com/andrewhowdencom/pdns:latest \
+#         --tag docker.pkg.github.com/andrewhowdencom/pdns:$(git rev-parse --short HEAD) \
 #         --file path/to/this/Dockerfile \
 #         $(git rev-parse --show-toplevel)
 #

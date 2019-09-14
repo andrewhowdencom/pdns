@@ -101,14 +101,28 @@ steps:
     image: "jess/img:v0.5.7"
     privileged: true
     commands:
+      # Get access to GitHub
+      - |
+        echo "$GITHUB_ACCESS_TOKEN"  \
+          | img login --username="$GITHUB_ACCESS_USERNAME" --password-stdin https://docker.pkg.github.com
+
+      # Compile the application
       - | 
         img build \
-          --tag gcr.io/andrewhowdencom/pdns:${DRONE_COMMIT} \
-          --tag gcr.io/andrewhowdencom/pdns:latest \
+          --tag docker.pkg.github.com/andrewhowdencom/pdns/app:${DRONE_COMMIT} \
+          --tag docker.pkg.github.com/andrewhowdencom/pdns/app:latest \
           --file build/containers/pdns/Dockerfile \
           .
+      # Deploy the artefact
+      - img push "docker.pkg.github.com/andrewhowdencom/pdns/app:latest"
+      - img push "docker.pkg.github.com/andrewhowdencom/pdns/app:${DRONE_COMMIT}"
     environment:
       GOPATH: "/drone/src/go"
+      GITHUB_ACCESS_USERNAME:
+        from_secret: "GITHUB_ACCESS_USERNAME"
+      GITHUB_ACCESS_TOKEN:
+        from_secret: "GITHUB_ACCESS_TOKEN"
+
 depends_on:
   - "dependencies"
 trigger:
