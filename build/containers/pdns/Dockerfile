@@ -23,12 +23,14 @@ RUN CGO_ENABLED=0 \
     go build \
         -a \
         -ldflags '-extldflags "-static"' \
-        -o ../bin/pdns
-
+        -o ../bin/pdns && \
+    setcap 'cap_net_bind_service=+ep' ../bin/pdns
 # Deployable Artifact
 FROM scratch
 
-COPY --from=0 /mnt/bin/pdns pdns
+COPY --from=0 /mnt/bin/pdns  /pdns
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 
-ENTRYPOINT [ "/pdns" ]
+USER 1
+
+ENTRYPOINT [ "/pdns", "serve" ]
