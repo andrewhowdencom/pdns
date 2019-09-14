@@ -26,7 +26,8 @@ responses.
 
 See github.com/andrewhowdencom/pdns`,
 	Run: func(cmd *cobra.Command, args []string) {
-		err := server.Serve()
+		srv := server.New(&server.Configuration{})
+		err := srv.Serve()
 
 		if err != nil {
 			log.WithFields(log.Fields{

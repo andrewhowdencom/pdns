@@ -12,12 +12,51 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const defaultListenPort int = 53
-const defaultListenHost string = "0.0.0.0"
+// Server is an entity reference representing the server
+type Server struct {
+	Configuration *Configuration
+}
+
+// Configuration is an entity that modifies the server behaviour
+type Configuration struct {
+	// Upstream is the resolver that this proxy will connect to
+	Upstream *Host
+
+	// Listen is the address on which this server will listen
+	Listen *Host
+}
+
+// Host configuration for binding or addressing servers
+type Host struct {
+	// An IP that represents a host to listen to or to address
+	IP string
+
+	// Port to listen for tp to address to
+	Port uint16
+}
+
+// New returns a new server. In the case that configuration variabels are not defined, set sane defaults.
+func New(configuration *Configuration) *Server {
+	return &Server{
+		Configuration: &Configuration{
+			Upstream: &Host{
+				IP:   "8.8.8.8",
+				Port: 853,
+			},
+			Listen: &Host{
+				IP:   "127.0.0.1",
+				Port: 53,
+			},
+		},
+	}
+}
 
 // Serve starts up the server listening for DNS connections
-func Serve() error {
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", defaultListenHost, defaultListenPort))
+func (server Server) Serve() error {
+	listener, err := net.Listen(
+		"tcp",
+		fmt.Sprintf("%s:%d", server.Configuration.Listen.IP, server.Configuration.Listen.Port),
+	)
 
 	if err != nil {
 		return fmt.Errorf("unable to start listener: %s", err.Error())
@@ -36,11 +75,11 @@ func Serve() error {
 
 		// Handle the connection. Each connection is handled in its own goroutine and assumed to deal with the
 		// connection within that context. This allows multiple connections to be executed in parallel
-		go proxy(connection)
+		go server.proxy(connection)
 	}
 }
 
-func proxy(inConn net.Conn) {
+func (server Server) proxy(inConn net.Conn) {
 	// Set up the connection
 	// The recommendation from the RFC 1035 is a 2m timeout duration. See:
 	// - https://tools.ietf.org/html/rfc1035#section-4.2.2
@@ -56,7 +95,11 @@ func proxy(inConn net.Conn) {
 	}
 
 	conf := &tls.Config{}
-	outConn, err := tls.Dial("tcp", "8.8.8.8:853", conf)
+	outConn, err := tls.Dial(
+		"tcp",
+		fmt.Sprintf("%s:%d", server.Configuration.Upstream.IP, server.Configuration.Upstream.Port),
+		conf,
+	)
 
 	if err != nil {
 		log.WithFields(log.Fields{
